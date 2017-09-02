@@ -2,9 +2,17 @@ OS := $(shell uname)
 
 # CPPFLAGS=-g3 -Wall -O0
 #-DVERBOSE
-CPPFLAGS=-O3 -Wall -DNDEBUG
 
+SHARED_LIB=true
 CPP=g++
+
+ifeq ($(SHARED_LIB), true)
+SHFLAGS = -fPIC
+else
+SHFLAGS = ""
+endif
+
+CPPFLAGS=$(SHFLAGS) -O3 -Wall -DNDEBUG
 
 ifeq ($(OS), Darwin)
 CPP=clang++
@@ -43,10 +51,20 @@ clean:
 	@echo " [CLN] Removing object files"
 	@rm -f $(OBJECTS)
 
+ifeq ($(SHARED_LIB), true)
+lib: pre $(OBJECTS)
+	@echo " [LIB] Packing the object files"
+	@rm -f ../lib/libcds.a ../lib/libcds.so.1*
+	@gcc -shared -fPIC -Wl,-soname,libcds.so.1 -o libcds.so.1.0.12 $(OBJECTS)
+	@ln -s libcds.so.1.0.12 libcds.so.1
+	@ln -s libcds.so.1.0.12 libcds.so
+	@mv libcds.so* ../lib/
+else
 lib: pre $(OBJECTS)
 	@echo " [LIB] Packing the object files"
 	@rm -f ../lib/libcds.a
 	@ar rcs ../lib/libcds.a $(OBJECTS)
+endif
 
 pre:
 	@echo " [HDR] Populating the includes folder"

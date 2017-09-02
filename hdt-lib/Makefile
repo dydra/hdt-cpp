@@ -8,12 +8,20 @@ RAPTOR_SUPPORT=true
 LIBZ_SUPPORT=true
 SERD_SUPPORT=true
 
+SHARED_LIB=true
+
 CPP=g++
 
-ifeq ($(CPP), g++)
-FLAGS=-O3 -Wno-deprecated -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-unused-but-set-variable -Wno-unknown-warning-option
+ifeq ($(SHARED_LIB), true)
+SHFLAGS = -fPIC
 else
-FLAGS=-O3 -Wno-deprecated -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-unknown-warning-option
+SHFLAGS = ""
+endif
+
+ifeq ($(CPP), g++)
+FLAGS=$(SHFLAGS) -O3 -Wno-deprecated -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-unused-but-set-variable -Wno-unknown-warning-option
+else
+FLAGS=$(SHFLAGS) -O3 -Wno-deprecated -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-unknown-warning-option
 endif
 
 INCLUDES=-I $(LIBCDSPATH)/includes/ -I /usr/local/include -I ./include -I /opt/local/include -I /usr/include
@@ -59,11 +67,18 @@ TOOLS=$(patsubst %.cpp,%, $(wildcard tools/*.cpp))
 TESTS=$(patsubst %.cpp,%, $(wildcard tests/*.cpp))
 EXAMPLES=$(patsubst %.cpp,%, $(wildcard examples/*.cpp))
 
+ifeq ($(SHARED_LIB), true)
+all:
+	@$(MAKE) showflags 
+	@$(MAKE) -C $(LIBCDSPATH)
+	@$(MAKE) libhdt.so
+else
 all:
 	@$(MAKE) showflags 
 	@$(MAKE) -C $(LIBCDSPATH)
 	@$(MAKE) tools tests/jointest
 	#@$(MAKE) tests examples
+endif
 
 re:
 	@$(MAKE) clean
@@ -105,12 +120,17 @@ libhdt.a: $(OBJECTS) $(HEADERS)
 	@rm -Rf libhdt.a
 	@ar rcs libhdt.a $(OBJECTS)
 
+libhdt.so: $(OBJECTS) $(HEADERS)
+	@gcc -shared -fPIC -Wl,-soname,libhdt.so.1 -o libhdt.so.1.1.1 $(OBJECTS)
+	@ln -s libhdt.so.1.1.1 libhdt.so.1
+	@ln -s libhdt.so.1.1.1 libhdt.so
+
 doc:	
 	@echo " [HDT] Generating documentation"
 	$(DOXYGEN)
 	
 clean:
 	@echo " [CLN] Removing object files"
-	@rm -f $(OBJECTS) $(TOOLS) $(TESTS) $(EXAMPLES) libhdt.a *~
+	@rm -f $(OBJECTS) $(TOOLS) $(TESTS) $(EXAMPLES) libhdt.a libhdt.so.1.1.1 libhdt.so.1 *~
 	@rm -Rf tools/*dSYM tests/*dSYM examples/*dSYM docs/*
 
